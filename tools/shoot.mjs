@@ -8,34 +8,24 @@
 // This is the feedback loop that makes shader work tractable: change code, rebuild, look at
 // every state of the deck at once. It relies on ?headless (no frame loop) and deck.seek().
 //
-// Needs Playwright:  npm i -D playwright   (uses your installed Chrome if the bundled browser is missing)
+//   npm run shoot -- --software                    SwiftShader instead of the GPU
+//
+// The thumbnails in contact.png are about phone width: if a headline is not readable there,
+// it is not readable on a phone or from the back of a room.
 
-import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { openDeck, reportErrors, args } from './browser.mjs';
 
-const argv = process.argv.slice(2);
-const opt = (name, def) => { const i = argv.indexOf('--' + name); return i < 0 ? def : argv[i + 1]; };
-const [W, H] = opt('size', '1600x900').split('x').map(Number);
-const only = opt('scene', null);
-const withTrans = argv.includes('--trans');
-const file = path.resolve(opt('file', 'dist/deck.html'));
+const a = args();
+const [W, H] = a.get('size', '1600x900').split('x').map(Number);
+const only = a.get('scene', null);
+const withTrans = a.has('trans');
 const out = path.resolve('shots');
 fs.mkdirSync(out, { recursive: true });
 
-const launch = async () => {
-  const flags = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
-  try { return await chromium.launch({ args: flags }); } catch { return chromium.launch({ channel: 'chrome', args: flags }); }
-};
-
-const browser = await launch();
-const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
-const errors = [];
-page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/GPU stall due to ReadPixels/.test(m.text())) errors.push(m.text()); });
-page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(pathToFileURL(file).href + '?headless&px=1');
-await page.waitForFunction('window.ready === true', null, { timeout: 120000 });
+// Uses the real GPU when there is one; --software forces SwiftShader (identical on every machine).
+const { browser, page, errors } = await openDeck({ file: a.get('file', 'dist/deck.html'), width: W, height: H, software: a.has('software') });
 
 const scenes = await page.evaluate(() => window.__deck.scenes.map((s) => ({ id: s.id, beats: s.beats.length })));
 const shots = [];
@@ -63,4 +53,4 @@ await sheet.screenshot({ path: path.join(out, 'contact.png'), fullPage: true });
 await browser.close();
 
 console.log(`${shots.length} shots → ${path.relative(process.cwd(), out)}/  (contact.png has them all)`);
-if (errors.length) { console.log('\nConsole problems:\n' + [...new Set(errors)].map((e) => '  ' + e).join('\n')); process.exitCode = 1; }
+if (reportErrors(errors)) process.exitCode = 1;

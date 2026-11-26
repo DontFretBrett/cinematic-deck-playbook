@@ -63,20 +63,64 @@ Bugs this loop caught while building the starter kit:
 | A headline visible mid-transition as a smear | The masked rise travelled less than the mask height |
 | A WebGL warning about texture offsets | A canvas texture was resized without disposing the GPU texture |
 
+## The motion audit
+
+Screenshots of settled beats say nothing about how the deck *moves*. `npm run motion` plays every scene and transition in fixed time steps and measures every frame:
+
+```bash
+npm run build && npm run motion
+npm run motion -- --scene shader          # one scene and the transition into it
+npm run motion -- --random 3              # also save 3 full-size frames per scene at random times
+npm run motion -- --software              # no GPU: slower, defaults to 640x360 at 30 fps
+```
+
+| It reports | Meaning | Result |
+|---|---|---|
+| **Jumps** | Mean brightness changed by 8+ (of 255) in one frame | Listed: intended, or a bug? |
+| **Pops** | A change of 10+ that comes back within 0.2 s | Listed. Usually a stale buffer, a snapped camera, or a light that cut out |
+| **Flashes** | WCAG-style count per second, whole frame and each quarter | **Fails** above 3 in any second |
+| **Hold motion** | How much the picture changes during 2 s of hold after each beat | Flags `STILL` near zero |
+| **Determinism** | Replaying a scene, and re-rendering every settled frame after everything else has played, must give the same picture | **Fails** on drift |
+| **Strips** | `shots/motion/<scene>.png`: per beat, six frames across the beat and six consecutive frames 1/30 s apart at peak motion | Look at them |
+
+For each jump and pop, decide whether it is intended (an impact, a cut) or a bug, and fix bugs at the root. Keep the verdicts in `NOTES.md`.
+
+The first time it ran on the starter deck it flagged the bar-chart scene: three beats whose holds were a perfectly frozen frame. The scene now has drifting light and bars that breathe.
+
+To confirm the audit itself works, three bugs were planted in a scene (a three-frame flash, a strobe, and state that leaked between visits). It reported all three.
+
+## Video export
+
+```bash
+npm run film                       # dist/deck.mp4, 1920x1080, 60 fps, autoplay timing
+npm run film -- --sub 8            # 8 sub-frames per frame: motion blur
+npm run film -- --hold 1.5         # cap each hold
+npm run film -- --from a --to b    # part of the deck
+npm run film -- --max 60           # also a two-pass copy under 60 MB
+```
+
+Nothing is screen-recorded. The deck is stepped in fixed increments, each frame is captured losslessly and piped to ffmpeg, so a slow scene cannot drop frames and every run is identical. It then verifies the file (stream facts, frame count, a full decode) and writes a 2 fps contact sheet of the whole cut, which is the quickest way to judge pacing and spot a dead stretch or a whiteout.
+
+On an M3 Ultra the four-scene demo (38.6 s, 2,314 frames, 1080p60, 8 sub-frames) exports in about 2 m 40 s. Capture is the bottleneck (about 70 ms per frame), not rendering. The video is silent.
+
+## Use the real GPU
+
+The tools ask headless Chrome for the machine's GPU and fall back to software rendering. The difference is large: at 1080p the demo scenes take 0.8–2.7 ms per frame on the GPU here against 40–120 ms in SwiftShader. Pass `--software` when you need results that are identical across machines.
+
 ## The smoke test
 
 `npm run smoke` drives the **live** deck: every beat forward, every beat back, then notes, help, overview, and a jump. It fails on any console error and checks that navigation ended where it should, the notes are populated and every thumbnail exists.
 
 It caught one more bug the screenshots could not: the reverb impulse was generated at 48 kHz but the audio context ran at 44.1 kHz, and the convolver rejected it.
 
-Run `npm run check` (build + shoot + smoke) before every commit.
+Run `npm run check` (build + shoot + motion + smoke) before every commit.
 
 ## Performance testing
 
 - `?px=1` and `?px=2` to compare pixel densities; `?q=0.6` to see the low-quality path.
 - The reference exposes a `perf(sceneId, n)` hook and a GPU timer (`gfx.time(fn)`: run `fn` n times, force a sync with a 1×1 `readPixels`, report ms per iteration). Worth adding when a scene is slow.
 - Test on the weakest machine you will present from, on battery, at the projector's resolution.
-- Software rendering in headless Chrome is 10–50× slower than a GPU. It tests correctness, not speed. The quality governor will kick in during the smoke test; that is expected.
+- With `--software`, headless Chrome is 20–50× slower than a GPU. It tests correctness, not speed, and the quality governor will kick in during the smoke test.
 
 ## Version control
 
@@ -87,4 +131,4 @@ Run `npm run check` (build + shoot + smoke) before every commit.
 - Reload returns to the same scene and beat (URL hash).
 - `?quick` skips warm-up.
 - `O` jumps anywhere.
-- `A` plays the whole deck; record the tab for a video version.
+- `A` plays the whole deck; `npm run film` turns that into a video.

@@ -85,6 +85,14 @@ It gives the deck a hand, makes changes feel caused rather than animated, and ti
 - Stage directions in parentheses: say it flatly; wait; read the bullets slowly, then stop talking; let the counter run while you talk.
 - A sentence decoding each visual metaphor.
 
+## One source of truth for facts
+
+Put every number the deck states in one object. The headline, the geometry and the speaker note all read from it, and a boot-time check fails if they disagree. When a figure is updated, the bar, the label and the sentence change together. (The film in [12](12-lessons-from-a-code-film.md) does this literally: the code typed on screen is executed, and the picture may read only the values it produces.)
+
+## Open and close on the same image
+
+The reference deck returns to its white template. The film opens with a cursor that becomes the sun and ends with everything collapsing to a point that is the cursor. Decide the rhyme before building anything.
+
 ## Small jokes that reward attention
 
 - The page number is itself exponential: 1, 2, 3, then Fibonacci numbers, then powers of ten, then ∞, then 1.

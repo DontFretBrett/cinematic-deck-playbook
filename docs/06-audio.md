@@ -125,6 +125,18 @@ On a scene change the old bed fades over ~0.85× the transition and the new one 
 - Every public method is wrapped in try/catch; the first error is stored, and the deck carries on without sound.
 - A watchdog timer keeps beds ticking if the frame loop stalls.
 
+## When the piece has a fixed timeline
+
+For a video or a deck on autoplay, a few more rules from the film in [12](12-lessons-from-a-code-film.md):
+
+- **Put cues on a tempo grid.** Its score runs at 120 BPM and every on-screen event lands on a beat.
+- **Master to a target**: −14 LUFS integrated, true peak at or below −1 dBTP, measured on the final file (`ffmpeg -af ebur128=peak=true`).
+- **Silence is a beat.** Just under a second of true digital zero before the last line; verified by counting zero samples.
+- **Render the score offline** in code, so it is sample-exact and reproducible.
+- **Generate sounds from the same data as the picture** (key clicks from the typed strings), so an edit to one updates the other.
+
+The starter kit's sound is real-time only; `npm run film` exports a silent video.
+
 ## Smallest viable version
 
 This is what the starter kit implements (`src/engine/audio.js`):

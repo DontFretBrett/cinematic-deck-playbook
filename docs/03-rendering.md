@@ -47,6 +47,18 @@ Settings the reference scenes actually use:
 
 Pattern: **grain 0.02–0.03 always; bloom threshold low at night and high in daylight; post values animate with the beats**, so the grade follows the story.
 
+## A pass and its readers share one gate
+
+If a pass only runs some of the time (a reflection, a blur that is skipped below a threshold, a history buffer), then every shader that reads its output must be gated by **the same function**:
+
+```js
+const on = needsReflection(s);
+if (on) reflection.render(reflTarget);
+main.set({ tRefl: reflTarget.texture, uRefl: on ? ramp : 0 });
+```
+
+Otherwise there will be frames where a shader samples the buffer as it was last written, possibly scenes ago. That bug is invisible when a frame is rendered on its own and only appears in sequence. And bring the effect in with a ramp: **nothing switches on in one frame.** The full story is in [12](12-lessons-from-a-code-film.md); `npm run motion` checks for it.
+
 ## Banding
 
 - Final ±1/255 triangular dither in `present`.
@@ -94,6 +106,8 @@ Each entry: what it is, and the rule to remember.
 - **Depth of field tied to scale.** Wide aperture at desk scale, tiny at city scale; the blur alone says "miniature" or "monumental".
 - **Gobos.** Project a window-pane or leaf pattern through the key light for instant realism on flat surfaces.
 - **Motion blur from the camera's derivative**: reproject, or radially blur by `d(ln distance)/dt`.
+- **Sub-frame accumulation** (offline only): render many sub-frames per output frame at slightly different times and average them in linear light. One mechanism gives motion blur, and with per-sub-frame jitter also anti-aliasing, soft shadows and converged volumetrics. Shorten the shutter where small fast things would smear. `deck.frame(dt, { sub, shutter })` does the motion-blur part for `npm run film`.
+- **Additive points need protection**: depth-test them and dim by density near the camera, or flying through a cloud of lights becomes a full-frame whiteout.
 
 ### 2D
 

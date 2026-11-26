@@ -4,12 +4,15 @@ How to build presentations that feel like short films: one full-window WebGL can
 
 This repo has two halves:
 
-1. **The lessons** (`docs/`) — a teardown of a public Claude artifact, *The Last Boring Slide* (a 13-slide talk on the future of AI), written up as reusable techniques and rules.
-2. **A starter kit** (`src/`) — an original, working deck engine (about 2,000 lines including the demo scenes and tools) that implements the core of those ideas, with a four-scene demo deck, a one-command single-file build, and screenshot and smoke-test tools.
+1. **The lessons** (`docs/`) — teardowns of two pieces of generated work, written up as reusable techniques and rules.
+2. **A starter kit** (`src/`, `tools/`) — an original, working deck engine with a four-scene demo deck, a one-command single-file build, and tools that screenshot it, audit its motion, drive it live and export it as video.
 
-Source studied: https://claude.ai/artifact/Cy2d8Vn63CnzCtonA1LSah
+Sources studied:
 
-Nothing here is copied from the artifact. The docs describe its techniques in my own words with the numbers that matter; the starter kit is new code written from those ideas.
+- *The Last Boring Slide*, a 13-slide WebGL talk published as a Claude artifact: https://claude.ai/artifact/Cy2d8Vn63CnzCtonA1LSah (docs 00–10)
+- *Creates Everything*, a prompt for a 55-second code-only film with one finished generation and its build notes: https://github.com/RezAIT00/agent-demos/tree/main/prompts/creates-everything (doc 12)
+
+Nothing here is copied from either. The docs describe their techniques in my own words with the numbers that matter; the starter kit and tools are new code written from those ideas.
 
 ## Quick start
 
@@ -20,15 +23,21 @@ open dist/deck.html  # → / space / click to advance, ? for keys
 
 npm run watch        # rebuild on save (open dist/deck.html?quick to skip warm-up)
 npm run shoot        # screenshot every beat of every scene → shots/contact.png
+npm run motion       # play every scene frame by frame: film strips, brightness pops, flashes, frozen holds, state leaks
 npm run smoke        # drive the live deck forwards and back, fail on any console error
-npm run check        # build + shoot + smoke
+npm run check        # build + shoot + motion + smoke
+npm run film         # frame-exact video → dist/deck.mp4 (needs ffmpeg; add -- --sub 8 for motion blur)
 ```
 
 The demo deck, every beat plus two transitions frozen mid-way (output of `npm run shoot -- --trans`):
 
 ![Contact sheet of the starter deck](docs/img/starter-contact.png)
 
-## The twenty ideas that do most of the work
+And one scene as the motion audit sees it (`npm run motion`): for each beat, six frames across the beat, then six consecutive frames 1/30 s apart at the moment of fastest change:
+
+![Film strip of one scene from the motion audit](docs/img/motion-strip.jpg)
+
+## The ideas that do most of the work
 
 **Structure**
 
@@ -62,6 +71,14 @@ The demo deck, every beat plus two transitions frozen mid-way (output of `npm ru
 19. **A headless mode with `seek(scene, beat)`** makes the whole deck screenshot-testable. This is what makes iterating on shader work with an AI practical. ([09](docs/09-build-test-ship.md))
 20. **Ship one file**: bundle the code, inline fonts and images as data URIs. It opens from disk, email, or an artifact link.
 
+**Working with an agent that cannot watch** (from the film, [12](docs/12-lessons-from-a-code-film.md))
+
+21. **Judge motion from evidence, not from video**: consecutive-frame strips, a 2 fps sheet of the whole cut, per-frame brightness, random frames instead of flattering ones.
+22. **A frame rendered alone must match the same frame in sequence.** Gate every optional pass and every read of its output with one function.
+23. **Audit every brightness jump** and give each a verdict: intended, or a bug with a root cause. Nothing switches on in one frame.
+24. **Treatment first, hardest part first, three critique passes, then honest notes**: rebuild what fails rather than polishing it, and write down what could not be judged.
+25. **One source of truth for facts**: the headline and the geometry read the same data, and a boot check refuses to run if they cannot agree.
+
 ## Docs
 
 | | |
@@ -78,7 +95,9 @@ The demo deck, every beat plus two transitions frozen mid-way (output of `npm ru
 | [09 — Build, test, ship](docs/09-build-test-ship.md) | Single-file build, the screenshot loop, publishing |
 | [10 — Scene recipes](docs/10-scene-recipes.md) | Thirteen case studies: idea → technique → rule |
 | [11 — Making a new deck with Claude](docs/11-workflow-with-claude.md) | A step-by-step process and prompts |
+| [12 — Lessons from a code-only film](docs/12-lessons-from-a-code-film.md) | How to brief and check an agent that cannot watch its own work |
 | [Checklist](docs/checklist.md) | Before you present |
+| [Templates](templates/) | A fill-in brief, a treatment table, and a notes skeleton |
 
 ## What the starter kit includes, and what it leaves to you
 
@@ -94,6 +113,8 @@ The demo deck, every beat plus two transitions frozen mid-way (output of `npm ru
 | Audio | Small bank, one reverb, one drone | 28 sounds, 20 pads, 13 scene beds, per-transition cues |
 | Presenter UI | Notes, second window, overview with live thumbnails, help, black screen, deep links | Same, with pre-baked thumbnails |
 | Headless `seek` / `seekTransition`, screenshot + smoke tools | Yes | `seek` / `trans` / `perf` hooks |
+| Motion audit: strips, jumps, pops, flashes, frozen holds, determinism | Yes (`npm run motion`) | The film's notes describe the same checks run on its video |
+| Frame-exact video export with sub-frame motion blur | Yes, silent (`npm run film`) | The film: 32 jittered sub-frames, an offline score mastered to −14 LUFS |
 
 ## Layout
 
@@ -104,8 +125,10 @@ src/
   scenes/       the four demo scenes — copy one to start a new scene
   main.js       scene order, boot, URL switches
   index.html    page shell and presenter-chrome CSS
+  facts.js      every number the deck states, with a boot-time check
 assets/         anything here is inlined into the build (fonts/, images)
-tools/          shoot.mjs (screenshots), smoke.mjs (live walk-through)
+tools/          shoot (screenshots), motion (frame-by-frame audit), smoke (live walk-through), film (video), browser (shared launcher)
+templates/      BRIEF.md, TREATMENT.md, NOTES.md
 build.mjs       esbuild → one HTML file
 docs/           the lessons
 ```

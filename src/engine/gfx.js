@@ -72,12 +72,12 @@ export function createGfx(canvas, { headless = false } = {}) {
      * the standard header is prepended. Uniform values can be plain numbers, arrays
      * (→ vectors by length), three.js objects or textures; read/write them through pass.u.name.value.
      */
-    pass(fragment, uniforms = {}, { blending = THREE.NoBlending, transparent = false } = {}) {
+    pass(fragment, uniforms = {}, { blending = THREE.NoBlending, transparent = false, blendSrc = THREE.OneFactor, blendDst = THREE.OneFactor } = {}) {
       const u = { uRes: { value: new THREE.Vector2() }, uTime: { value: 0 }, uPpu: { value: 1 } };
       for (const k in uniforms) u[k] = { value: wrap(uniforms[k]) };
       const mat = new THREE.RawShaderMaterial({
         glslVersion: THREE.GLSL3, vertexShader: VERT, fragmentShader: FRAG_HEAD + fragment,
-        uniforms: u, depthTest: false, depthWrite: false, blending, transparent,
+        uniforms: u, depthTest: false, depthWrite: false, blending, transparent, blendSrc, blendDst, // blendSrc/Dst apply with THREE.CustomBlending
       });
       const mesh = new THREE.Mesh(tri, mat);
       mesh.frustumCulled = false;

@@ -32,6 +32,7 @@ import { createGfx } from './gfx.js';
 import { createView } from './view.js';
 import { createType, createOverlay } from './type.js';
 import { clamp01, damp, ease } from './math.js';
+import { COLOR } from './glsl.js';
 
 const MAX_PIXELS = 2560 * 1600; // never shade more than this, whatever the display
 const nullAudio = () => ({ unlock() {}, mute() {}, emit() {}, hit() {}, update() {}, quiet: false });
@@ -246,6 +247,67 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
     },
     /** Advance time by dt seconds in fixed steps and draw once. */
     tick(dt = 1 / 60, steps = 1) { for (let i = 0; i < steps; i++) update(dt); draw(); },
+
+    // ── deterministic playback, for motion audits and video export ──
+    /** Initialise every scene and transition up front, so playback never waits on a promise. */
+    async prepare() {
+      resize();
+      for (const r of runners) { await r.init(); r.park(false); }
+      for (const name in T) transition(name);
+    },
+    /** Put scene `id` at the very start of `beat` (nothing in it has played yet). tick() / frame() then play it. */
+    async begin(id, beat = 0) {
+      const index = Math.max(0, scenes.findIndex((s) => s.id === id));
+      const r = runners[index];
+      await r.init(); r.park(false);
+      trans = null; queued = false; cur = index;
+      r.reset(beat, beat); if (r.inst.enter) r.inst.enter(r.s);
+      update(0); draw();
+    },
+    /** Arm the transition into scene `id` from the previous scene's settled last beat. Returns { name, dur }. */
+    async beginTransition(id) {
+      const to = scenes.findIndex((s) => s.id === id);
+      if (to < 1) return null;
+      const a = runners[to - 1], b = runners[to];
+      await a.init(); await b.init(); a.park(false); b.park(false);
+      a.reset(a.s.n - 1, a.s.n); b.reset(0, 0);
+      if (a.inst.enter) a.inst.enter(a.s);
+      if (b.inst.enter) b.inst.enter(b.s);
+      const name = scenes[to].enterWith || 'fade', t = transition(name);
+      cur = to - 1; queued = false; a.s.t = 6;
+      trans = { from: to - 1, to, T: t, name, p: 0, t: 0, dur: t.def.dur, speed: 1, reverse: false, linked: name !== 'fade' };
+      if (t.inst.start) t.inst.start(trans);
+      update(0); draw();
+      return { name, dur: t.def.dur };
+    },
+    /**
+     * One output frame of duration dt. With sub > 1 the shutter stays open for `shutter` of the
+     * interval while `sub` sub-frames are rendered and averaged in linear light: real motion blur
+     * for video export. (The live deck never uses this; it costs `sub` times a normal frame.)
+     */
+    frame(dt = 1 / 60, { sub = 1, shutter = 0.5 } = {}) {
+      if (sub <= 1) { update(dt); draw(); return; }
+      if (!ACC) {
+        ACC = gfx.target({ type: THREE.HalfFloatType }); RES = gfx.target();
+        accum = gfx.pass(COLOR + 'uniform sampler2D tA; uniform float uW; void main(){ o = vec4(toLin(texture(tA, vUv).rgb) * uW, 1.); }', { tA: null, uW: 1 }, { blending: THREE.CustomBlending });
+        resolve = gfx.pass(COLOR + 'uniform sampler2D tA; void main(){ o = vec4(toSrgb(texture(tA, vUv).rgb), 1.); }', { tA: null });
+      }
+      const open = dt * shutter;
+      gfx.clear(ACC, 0x000000, 1);
+      for (let i = 0; i < sub; i++) {
+        update(open / sub);
+        const src = compose(); if (!src) return;
+        accum.set({ tA: src.texture, uW: 1 / sub }); accum.render(ACC);
+      }
+      update(dt - open); // shutter closed: time passes, nothing is exposed
+      resolve.set({ tA: ACC.texture }); resolve.render(RES);
+      gfx.present(RES, black, time);
+    },
+    /** What is on screen right now, for tools. */
+    state() {
+      const r = runners[trans ? trans.to : cur], b = r.def.beats[r.s.beat];
+      return { scene: r.def.id, index: r.i, beat: r.s.beat, beats: r.s.n, p: r.s.p[r.s.beat], since: r.s.since[r.s.beat], dur: b.dur, delay: b.delay || 0, hold: b.hold ?? 3, transition: trans ? trans.name : null, tp: trans ? trans.p : 0, last: r.i === runners.length - 1 && r.s.beat === r.s.n - 1 };
+    },
     resize,
   };
   ctx.deck = deck;
@@ -329,8 +391,13 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
     audio.update(dt, { scene: cur >= 0 ? scenes[trans ? trans.to : cur].id : '', beat: cur >= 0 ? runners[trans ? trans.to : cur].s.beat : 0 });
   }
 
-  function draw() {
-    if (cur < 0) return;
+  let ACC = null, RES = null, accum = null, resolve = null;
+
+  // compose() builds the finished frame in a target; draw() puts it on screen.
+  function draw() { const src = compose(); if (src) gfx.present(src, black, time); }
+
+  function compose() {
+    if (cur < 0) return null;
     let src = A;
     if (trans) {
       const from = runners[trans.from], to = runners[trans.to];
@@ -348,7 +415,7 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
       if (h && h.color && h.color !== pageText.o.color) pageText.style({ color: h.color });
       hud.render(src);
     }
-    gfx.present(src, black, time);
+    return src;
   }
 
   // ── frame loop with a one-way quality governor ───────────────────────────────

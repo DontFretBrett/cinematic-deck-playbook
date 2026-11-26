@@ -137,6 +137,12 @@ Each one in the reference deck is picked for what the two scenes mean:
 
 **The transition is the last gesture of one idea and the first of the next.** If you cannot say why a transition fits, use the fade.
 
+## Better than a transition: the same thing, re-posed
+
+The film studied in [12](12-lessons-from-a-code-film.md) has no cuts at all, and its brief lists the disguises it will not accept: crossfade, wipe, whiteout, fog cover, hidden cut. Each world is made from the one before: one surface morphs from sea to wave to vaulted roof; shards of glass unfold into birds; one field of points is city windows, then rising lights, then a galaxy.
+
+Where two scenes can share a primitive (the same instanced field, the same points, the same sheet), re-pose it across the cut instead of blending two pictures. It is the strongest continuity available, and it needs no transition shader.
+
 ## Sound
 
 Each transition has a cue whose envelopes are written in normalised time and scaled by the duration, so the audio stretches with the animation (see [06](06-audio.md)). A sample with a built-in attack is started early by exactly that attack time so its peak lands on the visual hit.

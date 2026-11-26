@@ -53,7 +53,7 @@ export default {
           const cx = x - G / 2 + 0.5, cz = z - G / 2 + 0.5, r = Math.hypot(cx, cz);
           const ripple = 0.5 + 0.5 * Math.sin(r * 0.55 - s.t * 1.4);
           // A ring that travels outward during beat 2: a gaussian around radius = speed * time.
-          const ring = Math.exp(-Math.pow((r - pulse * 9) * 0.45, 2)) * wave * (1 - calm);
+          const ring = Math.exp(-Math.pow((r - pulse * 9) * 0.45, 2)) * wave * (1 - calm) * Math.max(0, 1 - r / 26); // dies away before it reaches the camera
           const hgt = (0.15 + ripple * 0.9 * rise + ring * 5.5) * mix(1, 0.35, calm);
           m.makeScale(1, Math.max(0.02, hgt), 1).setPosition(cx, 0, cz);
           mesh.setMatrixAt(i, m);

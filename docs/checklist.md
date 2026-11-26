@@ -28,12 +28,25 @@
 - [ ] Reloading returns to the same scene and beat.
 - [ ] One-shot sounds use `s.cue` and do not fire on Back or during warm-up.
 - [ ] Any internal state is reseeded in `enter`.
+- [ ] `npm run motion` reports no determinism drift: a frame rendered alone matches the same frame in sequence.
+- [ ] Every optional pass and every read of its output are gated by the same function.
+- [ ] Every number on screen comes from one `facts` object.
+
+## Motion
+
+- [ ] `npm run motion`: at most three flashes in any second, whole frame and each quarter.
+- [ ] Every listed jump and pop has a verdict (intended or bug) and the bugs are fixed at the root.
+- [ ] No hold is flagged `STILL`.
+- [ ] Nothing switches on in a single frame; cameras have limited slope and acceleration.
+- [ ] The film strips in `shots/motion/` read as smooth, and fast things are not smeared.
 
 ## Picture
 
 - [ ] HDR scenes go through post; flat scenes deliberately do not.
 - [ ] No banding in gradients or fog.
-- [ ] Text is legible at thumbnail size on every beat.
+- [ ] Text is legible at thumbnail size on every beat, and against the brightest frame it sits on.
+- [ ] Random frames (`npm run motion -- --random 3`) look as good as the settled ones.
+- [ ] No frame looks like a default template or a tech demo (unless that is the joke).
 - [ ] Looks right at 16:10, 4:3 and ultrawide (backgrounds bleed; nothing important leaves the 16:9 frame).
 - [ ] Text is sharp at the presentation resolution.
 
@@ -51,6 +64,11 @@
 - [ ] Fonts are embedded (or the fallback stack is acceptable) and licensed for embedding.
 - [ ] Notes panel, second window fallback, overview and help all work where it will be presented.
 - [ ] Sound level is modest; `M` mutes.
+
+## Handing over
+
+- [ ] `NOTES.md` lists every check with its numbers, the weak spots, and what could not be judged.
+- [ ] If a video is needed: `npm run film` output verified (frame count, decode) and its contact sheet looked at.
 
 ## On the day
 

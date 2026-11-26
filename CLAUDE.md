@@ -9,21 +9,31 @@ npm run build                     # → dist/deck.html
 npm run shoot                     # screenshot every beat → shots/*.png, shots/contact.png
 npm run shoot -- --scene <id>     # one scene
 npm run shoot -- --trans          # plus transitions at p = 0.5
+npm run motion                    # play every scene frame by frame: strips, jumps, pops, flashes, still holds, state leaks
+npm run motion -- --scene <id> --random 3
 npm run smoke                     # drive the live deck; fails on console errors
-npm run check                     # all of the above; run before finishing any change
+npm run check                     # build + shoot + motion + smoke; run before finishing any change
+npm run film -- --sub 8           # frame-exact video → dist/deck.mp4 (+ a 2 fps contact sheet)
 ```
 
 ## How to work on a deck
 
 1. Read `docs/11-workflow-with-claude.md` for the process, and `docs/01`, `02`, `03` before writing a scene.
-2. After every visual change: build, shoot the scene, and **open the PNGs and look at them**. Do not judge shader work by reading the code.
-3. Finish with `npm run check`.
+2. Write `TREATMENT.md` (from `templates/`) before any scene code. Build the hardest scene first, to final quality.
+3. After every visual change: build, shoot the scene, and **open the PNGs and look at them**. Do not judge shader work by reading the code.
+4. You cannot watch the deck move. Run `npm run motion` and look at the strips in `shots/motion/`. For every jump and pop it lists, decide whether it is intended or a bug, and fix bugs at the root. Look at random frames (`--random 3`), not only settled ones.
+5. Finish with `npm run check`, then write `NOTES.md` (from `templates/`): the numbers from each check, honest weak spots, and what you could not judge.
 
 ## Rules for scene code
 
 - A scene is a pure function of its state `s` (`s.p`, `s.k(beat, t0, t1, ease)`, `s.at(beat)`, `s.t`, `s.enter`, `s.exit`, `s.mouse`, `s.q`). No timers, no `Date.now()`, no unseeded `Math.random()` in anything that affects the picture.
 - `update(s)` computes; `render(target, s)` draws. Both may be called with `dt = 0`, out of order, or several times per frame.
 - Any integrator (physics, accumulated speed) is reseeded in `enter(s)`.
+- If a pass runs only some of the time, gate the pass **and every read of its output** with the same function, or a shader will sample a stale buffer.
+- Nothing switches on in one frame: ramp it. Limit camera slope and acceleration.
+- Holds must move (drift, parallax, creep); `npm run motion` flags a frozen hold.
+- At most three full-frame flashes in any second.
+- Numbers shown on screen come from one data object that the geometry also reads.
 - One-shot sounds and events go through `s.cue(name, condition, fn)`.
 - Author timelines in seconds inside a beat. Stagger with an offset per item.
 - Shade in linear light into a HalfFloat target, finish with `createPost(ctx).render(...)`, draw text overlays after post. Flat graphic scenes may write display colour directly and skip post.

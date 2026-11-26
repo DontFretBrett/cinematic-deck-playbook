@@ -5,22 +5,14 @@
 // Walks forward through every beat, back to the start, then opens the overview, notes and help.
 // Catches the class of bug screenshots miss: warm-up, transitions, reverse navigation, the UI.
 
-import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { openDeck, args } from './browser.mjs';
 
-const file = path.resolve('dist/deck.html');
+const a = args();
 const out = path.resolve('shots'); fs.mkdirSync(out, { recursive: true });
-const flags = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
-const browser = await chromium.launch({ args: flags }).catch(() => chromium.launch({ channel: 'chrome', args: flags }));
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
-const errors = [];
-page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/ReadPixels|AudioContext/.test(m.text())) errors.push(m.text()); });
-page.on('pageerror', (e) => errors.push(String(e)));
-
-await page.goto(pathToFileURL(file).href + '?px=1');
-await page.waitForFunction('window.ready === true', null, { timeout: 180000 });
+// The live deck (no ?headless): warm-up, frame loop, UI and audio all run.
+const { browser, page, errors } = await openDeck({ width: 1280, height: 720, query: '?px=1', software: a.has('software'), extraArgs: ['--autoplay-policy=no-user-gesture-required'] });
 const info = () => page.evaluate(() => { const d = window.__deck, i = d.info(); return { ...i, busy: !!d.trans }; });
 const settle = async () => { for (let i = 0; i < 200; i++) { if (!(await info()).busy) return; await page.waitForTimeout(100); } throw new Error('transition never finished'); };
 

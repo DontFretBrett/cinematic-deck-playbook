@@ -2,6 +2,8 @@
 
 A process that works, in order. The reference deck is roughly 40 KB of minified code per scene; that is a lot of careful shader work. It gets built scene by scene with a tight look-at-it loop, not in one prompt.
 
+If you would rather hand over one complete brief, fill in [`templates/BRIEF.md`](../templates/BRIEF.md); it packs these steps, the rules and the checks into a single prompt. [Doc 12](12-lessons-from-a-code-film.md) explains why it is shaped that way.
+
 ## Step 0 — Set up
 
 Copy this repo (or just `src/`, `tools/`, `build.mjs`, `package.json`) into the new project. Run `npm install && npm run check` to confirm the demo deck builds and passes.
@@ -36,7 +38,7 @@ Now you have the storyboard table:
 | # | id | Says | Headline | Picture | Technique | Ends on | Transition in |
 |---|---|---|---|---|---|---|---|
 
-Commit it as `STORYBOARD.md` in the deck's repo.
+Commit it as `TREATMENT.md` in the deck's repo, using [`templates/TREATMENT.md`](../templates/TREATMENT.md), which adds camera, light and sound columns and a line per scene on how it will be built.
 
 ## Step 4 — Skeleton deck
 
@@ -44,16 +46,19 @@ Commit it as `STORYBOARD.md` in the deck's repo.
 
 You can now rehearse the whole talk with placeholder pictures. Fix pacing here.
 
-## Step 5 — One scene at a time
+## Step 5 — One scene at a time, hardest first
+
+Start with the scene most likely to fail, and take it to final quality before touching the others. If it cannot be made to work, you want to know now, and what you build for it (a post setup, a camera rig, a text treatment) carries to the rest.
 
 For each scene, in its own session or clearly separated turn:
 
-> Build scene `[id]` from STORYBOARD.md.
+> Build scene `[id]` from TREATMENT.md.
 > - Follow the scene contract in docs/01 and the colour convention in docs/03.
 > - Everything must be a function of `s` (beat progress and time) so Back and `seek` work. Any integrator is reseeded in `enter`.
 > - Use `s.k(beat, t0, t1, ease)` timelines in seconds. Use `s.cue` for sounds.
 > - Scale step and instance counts by `s.q`.
 > - After each meaningful change run `npm run build && npm run shoot -- --scene [id]` and **look at** `shots/[id]-*.png`. Iterate until each beat reads clearly at thumbnail size.
+> - You cannot watch it move, so run `npm run motion -- --scene [id] --random 3` and look at the strip in `shots/motion/` and the random frames. For every jump or pop it lists, say whether it is intended or a bug; fix bugs at the root.
 > - Finish with `npm run check`.
 
 What to ask for when reviewing shots:
@@ -70,11 +75,17 @@ What to ask for when reviewing shots:
 
 Add cues last, when timings are stable: `s.cue` for one-shots, a transition cue per custom transition. See docs/06 for what to add beyond the starter's five sounds.
 
-## Step 8 — Polish pass
+## Step 8 — Three critique passes
 
-> Go through docs/checklist.md against this deck and fix what fails.
+> Export the deck with `npm run film -- --hold 1.5` and look at `dist/deck.contact.png`, then at random full-size frames from `npm run motion -- --random 3`. As a bored member of the audience: is the first ten seconds worth staying for? Is any scene weaker than the best one? Does any frame look like a default template or a tech demo? Does the ending land? **Rebuild what fails rather than polishing it.** Do this three times, looking at different evidence each time.
 
-Then present it to yourself with `A` (autoplay) and watch for dead holds.
+Then go through `docs/checklist.md`, and present it to yourself with `A` (autoplay).
+
+## Step 9 — Honest notes
+
+> Write `NOTES.md` from `templates/NOTES.md`: every check with its numbers, the jump/pop verdict table, the weakest moments by scene and beat, and what you could not judge (how it sounds, how it looks on the real screen).
+
+The weak-spots list is the most useful thing an agent can hand back. Ask for it every time.
 
 ## Prompts for common fixes
 

@@ -16,11 +16,13 @@ import title from './scenes/01-title.js';
 import beats from './scenes/02-beats.js';
 import shader from './scenes/03-shader.js';
 import field from './scenes/04-field.js';
+import { checkFacts } from './facts.js';
 
 const scenes = [title, beats, shader, field];
 const transitions = { iris, shove };
 
 async function boot() {
+  checkFacts(); // refuse to present numbers the data does not support
   const qs = new URLSearchParams(location.search);
   const headless = qs.has('headless');
   const canvas = document.getElementById('stage');

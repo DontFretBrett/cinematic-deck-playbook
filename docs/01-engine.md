@@ -121,7 +121,15 @@ Two rules in `present`: add triangular-PDF dither (the sum of two hashes, ±1/25
 - `deck.seekTransition(sceneId, p)` freezes the transition into a scene at progress `p`.
 - `window.ready = true` once the first frame exists.
 
-These exist for screenshots (see [09](09-build-test-ship.md)). They are also the reason scenes must be functions of their state.
+And for playing the deck in fixed time steps (motion audits, video export):
+
+- `deck.prepare()` initialises every scene and transition up front.
+- `deck.begin(sceneId, beat)` puts a scene at the very start of a beat; `deck.beginTransition(sceneId)` arms the transition into it.
+- `deck.tick(dt)` advances time and draws; `deck.advance()` moves to the next beat.
+- `deck.frame(dt, { sub, shutter })` renders one output frame from `sub` sub-frames averaged in linear light while the shutter is open: motion blur for video.
+- `deck.state()` reports scene, beat, progress and whether a transition is running.
+
+These exist for screenshots, audits and export (see [09](09-build-test-ship.md)). They are also the reason scenes must be functions of their state.
 
 ## URL switches
 

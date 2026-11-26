@@ -9,7 +9,9 @@
     "watch": "node build.mjs --watch",
     "shoot": "node tools/shoot.mjs",
     "smoke": "node tools/smoke.mjs",
-    "check": "node build.mjs && node tools/shoot.mjs --trans && node tools/smoke.mjs"
+    "motion": "node tools/motion.mjs",
+    "film": "node tools/film.mjs",
+    "check": "node build.mjs && node tools/shoot.mjs --trans && node tools/motion.mjs && node tools/smoke.mjs"
   },
   "dependencies": {
     "three": "^0.170.0"

@@ -11,6 +11,7 @@ Sources studied:
 
 - *The Last Boring Slide*, a 13-slide WebGL talk published as a Claude artifact: https://claude.ai/artifact/Cy2d8Vn63CnzCtonA1LSah (docs 00–10)
 - *Creates Everything*, a prompt for a 55-second code-only film with one finished generation and its build notes: https://github.com/RezAIT00/agent-demos/tree/main/prompts/creates-everything (doc 12)
+- *We Taught Sand to Talk*, a twelve-scene WebGL short film published as a Claude artifact: https://claude.ai/artifact/U41NU2bGjKBgmzNKGwGdsm (doc 13)
 
 Nothing here is copied from either. The docs describe their techniques in my own words with the numbers that matter; the starter kit and tools are new code written from those ideas.
 
@@ -79,6 +80,14 @@ And one scene as the motion audit sees it (`npm run motion`): for each beat, six
 24. **Treatment first, hardest part first, three critique passes, then honest notes**: rebuild what fails rather than polishing it, and write down what could not be judged.
 25. **One source of truth for facts**: the headline and the geometry read the same data, and a boot check refuses to run if they cannot agree.
 
+**Phones and everyone else** (from the twelve-scene film, [13](docs/13-lessons-from-a-12-scene-film.md))
+
+26. **Frame for every screen shape**: widen the lens as the screen narrows and shift it (not the camera) to leave room for the headline.
+27. **Visible controls, never hover-only**, a hint that leaves on its own, and a smaller pixel budget on phones.
+28. **Captions reach screen readers**: the picture is a canvas, so each beat's caption goes to a live region.
+29. **Respect reduced motion**: less camera travel, no zoom blur.
+30. **A cut that feels like travel**: both cameras keep moving, a zoom blur peaks mid-cut, the mix happens in a window, and the sound glides to the next chord.
+
 ## Docs
 
 | | |
@@ -96,6 +105,7 @@ And one scene as the motion audit sees it (`npm run motion`): for each beat, six
 | [10 — Scene recipes](docs/10-scene-recipes.md) | Thirteen case studies: idea → technique → rule |
 | [11 — Making a new deck with Claude](docs/11-workflow-with-claude.md) | A step-by-step process and prompts |
 | [12 — Lessons from a code-only film](docs/12-lessons-from-a-code-film.md) | How to brief and check an agent that cannot watch its own work |
+| [13 — Lessons from a twelve-scene film](docs/13-lessons-from-a-12-scene-film.md) | Phones, accessibility, a travel-like cut, a measuring motif, sound per scene |
 | [Checklist](docs/checklist.md) | Before you present |
 | [Templates](templates/) | A fill-in brief, a treatment table, and a notes skeleton |
 
@@ -105,12 +115,13 @@ And one scene as the motion audit sees it (`npm run motion`): for each beat, six
 |---|---|---|
 | Beat model, navigation, reverse, queued advance, autoplay | Yes | Same model |
 | Warm-up, parking, pixel cap | Yes | Same |
-| Quality governor | One-way step-down | Two-way with hysteresis and lockout |
+| Quality governor | Two-way with hysteresis and lockout | Same |
 | Design space that extends on non-16:9 windows | Yes | Same |
 | Per-glyph text with masked reveals | Offset, alpha, scale, rotate, clip | Adds per-glyph blur, skew, colour, mixed-style runs, 3D placement |
 | Post stack | Bloom, ACES, grade, vignette, grain, chromatic aberration | Adds AgX, halation, lift/gain |
-| Transitions | fade, iris (with a `portal` hook), shove | Nine, including homography portals, origami fold, water, split-flap, tear |
-| Audio | Small bank, one reverb, one drone | 28 sounds, 20 pads, 13 scene beds, per-transition cues |
+| Transitions | fade, iris (with a `portal` hook), shove, push (zoom-blur travel) | Nine, including homography portals, origami fold, water, split-flap, tear |
+| Phone and accessibility | Lens fitting, visible controls, hint, phone pixel budget, reduced motion, live captions | The twelve-scene film does all of these; the deck has none |
+| Audio | Small bank, one reverb, a live bed with a chord per scene that swells on cuts | 28 sounds, 20 pads, 13 scene beds, per-transition cues |
 | Presenter UI | Notes, second window, overview with live thumbnails, help, black screen, deep links | Same, with pre-baked thumbnails |
 | Headless `seek` / `seekTransition`, screenshot + smoke tools | Yes | `seek` / `trans` / `perf` hooks |
 | Motion audit: strips, jumps, pops, flashes, frozen holds, determinism | Yes (`npm run motion`) | The film's notes describe the same checks run on its video |
@@ -120,8 +131,8 @@ And one scene as the motion audit sees it (`npm run motion`): for each beat, six
 
 ```
 src/
-  engine/       math, glsl library, gfx (targets + passes), view, type, post, audio, ui, deck
-  transitions/  iris, shove            (fade is built in)
+  engine/       math, glsl library, gfx (targets + passes), view, camera, type, post, audio, ui, deck
+  transitions/  iris, shove, push      (fade is built in)
   scenes/       the four demo scenes — copy one to start a new scene
   main.js       scene order, boot, URL switches
   index.html    page shell and presenter-chrome CSS

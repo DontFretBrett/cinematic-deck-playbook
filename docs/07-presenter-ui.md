@@ -27,9 +27,21 @@ Details that matter:
 - While the overview is open, handle only Esc and O; let native button focus and Enter do the rest.
 - PageDown/PageUp are what presentation clickers send.
 
+## Visible controls
+
+Keys are for presenters. A phone has none, and a viewer who opens a shared link doesn't know them. So the starter also shows four buttons top right: sound, play by itself, full screen, keys. They are real `<button>`s with `aria-pressed`, quiet (55% opacity) until used, never hover-only, and they hide with the idle cursor. Full screen is only offered where the browser supports it. A hairline under them fills over each beat while autoplay runs.
+
+A first-run hint ("Tap or press → to advance · A plays it by itself · ? for keys") appears after 1.4 s and leaves after nine seconds or on the first move.
+
+`?clean` hides both, for recording or presenting from a laptop.
+
+## Captions for screen readers
+
+The picture is a canvas, so a screen reader hears nothing unless the page says it. Give each beat a `caption` (one plain sentence describing what changes); when a beat arrives, the scene title (on arrival) and caption go to a visually hidden `aria-live="polite"` region.
+
 ## Pointer
 
-- Tap (under 12 px of movement, under 600 ms) → next.
+- Tap (under 12 px of movement, under 600 ms) → next. Taps on the control buttons don't count.
 - Horizontal swipe over 50 px → next / back.
 - Right-click → back.
 - A scene can claim a drag (the reference's draggable divider) by returning truthy from a `pointer('down', x, y, s)` hook; the engine then captures the pointer for it.

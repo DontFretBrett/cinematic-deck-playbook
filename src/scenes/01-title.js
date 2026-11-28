@@ -10,7 +10,7 @@ export default {
   id: 'title',
   title: 'Hello, deck',
   enterWith: 'fade',
-  beats: [{ dur: 2.2, hold: 3 }, { dur: 1.4, hold: 4 }],
+  beats: [{ dur: 2.2, hold: 3, caption: 'Hello, deck.' }, { dur: 1.4, hold: 4, caption: 'A starter for cinematic, single-file presentations.' }],
   notes: [
     'Open on the title. Say nothing for a second; let the picture breathe.',
     'Every click advances one beat. A beat is a small timeline measured in seconds.',

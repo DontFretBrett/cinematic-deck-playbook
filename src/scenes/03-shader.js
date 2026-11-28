@@ -12,7 +12,7 @@ export default {
   id: 'shader',
   title: 'Every pixel is a function',
   enterWith: 'iris',
-  beats: [{ dur: 2, delay: 0.9, hold: 3 }, { dur: 3, hold: 4 }, { dur: 2.5, hold: 4 }],
+  beats: [{ dur: 2, delay: 0.9, hold: 3, caption: 'Every pixel is a function: one sphere, drawn by a shader.' }, { dur: 3, hold: 4, caption: 'Beats drive uniforms: the sphere splits into six.' }, { dur: 2.5, hold: 4, caption: 'Post makes it film: bloom, grain and vignette fade in.' }],
   notes: [
     'No models were loaded. This is one fragment shader marching a distance field.',
     'A beat feeds a uniform. Here one number, "spread", pulls a single sphere apart into six.',

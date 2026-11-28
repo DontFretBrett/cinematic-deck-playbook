@@ -34,6 +34,9 @@ npm run film -- --sub 8           # frame-exact video → dist/deck.mp4 (+ a 2 f
 - Holds must move (drift, parallax, creep); `npm run motion` flags a frozen hold.
 - At most three full-frame flashes in any second.
 - Numbers shown on screen come from one data object that the geometry also reads.
+- Give every beat a `caption` (one plain sentence) for screen readers.
+- Read `ctx.reduced`: with reduced motion, travel less and skip blur and flashes.
+- Frame 3D cameras with `fitCamera()` so phones held upright still see the subject; check with `npm run shoot -- --size 390x844`.
 - One-shot sounds and events go through `s.cue(name, condition, fn)`.
 - Author timelines in seconds inside a beat. Stagger with an offset per item.
 - Shade in linear light into a HalfFloat target, finish with `createPost(ctx).render(...)`, draw text overlays after post. Flat graphic scenes may write display colour directly and skip post.

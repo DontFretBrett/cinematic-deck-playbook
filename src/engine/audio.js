@@ -7,6 +7,7 @@
 //   • everything tuned to harmonics of one root, so any two sounds are consonant
 //   • seeded randomness: the deck sounds identical on every load
 //   • one generated reverb impulse, one compressor on the master
+//   • a live bed whose chord glides to a new one for each scene, swelling with the cut
 //   • the deck calls emit('beat' | 'back' | 'transition') and scenes call ctx.sfx(name)
 //
 // See docs/06-audio.md for how to grow this into beds, per-transition cues and a time-sliced bank.
@@ -80,17 +81,19 @@ function impulse(sec, seed, sr) {
   return finish(chs, 0.9);
 }
 
-/** A seamless drone: every partial completes a whole number of cycles in the loop. */
-function drone(sec) {
-  const chs = stereo(sec), step = 1 / sec;
-  [[2, 0.5], [3, 0.32], [4, 0.2], [6, 0.1], [8, 0.06]].forEach(([n, a]) => chs.forEach((c, ch) => {
-    for (const det of [0, step]) { const f = Math.round(H(n) / step) * step + det * (ch ? 1 : 2), w = (TAU * f) / SR; for (let i = 0; i < c.length; i++) c[i] += Math.sin(w * i + n * ch) * a * 0.5; }
-  }));
-  return finish(chs, 0.5);
-}
+// One chord per scene, all built from harmonics of the root so every change is a smooth glide.
+// Each entry multiplies the root; the bed's voices glide to the new chord when a scene arrives.
+const CHORDS = [
+  [2, 3, 4, 5, 6],           // open, major
+  [2, 3, 4, 4.8, 6.4],       // a darker colour (minor third, minor sixth)
+  [2, 2.67, 4, 5.33, 6],     // suspended: a question
+  [1.5, 3, 4.5, 6, 7.5],     // lower, wider
+  [2, 3, 4.5, 5, 6],         // brighter
+  [2, 3, 4, 5, 6],           // home
+];
 
 export function makeAudio() {
-  let ac = null, sum, master, hall, bed = null, muted = false, last = {};
+  let ac = null, sum, master, hall, bed = null, filt = null, voices = [], muted = false, last = {}, chord = 0, resumeOnShow = false;
   const bufs = {};
   const safe = (fn) => (...a) => { try { return fn(...a); } catch (e) { if (!api.err) { api.err = e; console.warn('audio', e); } } };
 
@@ -110,9 +113,38 @@ export function makeAudio() {
     // impulse is generated at the context rate. (Ordinary buffers are resampled on playback.)
     const jobs = [() => { hall.buffer = toBuffer(impulse(2.8, 71, ac.sampleRate), ac.sampleRate); }];
     for (const name in BANK) for (let v = 0; v < BANK[name][0]; v++) jobs.push(() => { (bufs[name] = bufs[name] || [])[v] = toBuffer(BANK[name][1](rng(name.length * 131 + v * 17 + 1), v)); });
-    jobs.push(() => { bed = play(toBuffer(drone(4)), { gain: 0, loop: true, wet: 0.5 }); bed.g.gain.setTargetAtTime(0.11, ac.currentTime, 2.5); });
+    jobs.push(buildBed);
     const next = () => { const j = jobs.shift(); if (j) { safe(j)(); setTimeout(next, 4); } };
     setTimeout(next, 0);
+  }
+
+  // The bed: five detuned voices (sine + a little saw) through a slowly breathing low-pass and the
+  // hall. Live oscillators rather than a loop, so they can glide from chord to chord.
+  function buildBed() {
+    bed = ac.createGain(); bed.gain.value = 0;
+    filt = ac.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 760; filt.Q.value = 0.6;
+    const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 0.05; lg.gain.value = 240; lfo.connect(lg).connect(filt.frequency); lfo.start();
+    const send = ac.createGain(); send.gain.value = 0.7;
+    bed.connect(filt); filt.connect(sum); filt.connect(send).connect(hall);
+    CHORDS[chord].forEach((m, i) => {
+      const g = ac.createGain(); g.gain.value = 0.06 - i * 0.006;
+      const a = ac.createOscillator(), b = ac.createOscillator(), bg = ac.createGain();
+      a.type = i < 2 ? 'sine' : 'triangle'; b.type = 'sawtooth'; bg.gain.value = i ? 0.14 : 0;
+      a.frequency.value = b.frequency.value = H(m); a.detune.value = -5; b.detune.value = 7;
+      const p = ac.createStereoPanner(); p.pan.value = (i / 4) * 1.2 - 0.6;
+      a.connect(g); b.connect(bg).connect(g); g.connect(p).connect(bed);
+      a.start(); b.start(); voices.push([a, b]);
+    });
+    bed.gain.setTargetAtTime(0.5, ac.currentTime, 2.5);
+  }
+  /** Glide the bed to the chord for scene `i` and swell it with the cut: louder, brighter, a breath of noise. */
+  function swell(i, dur) {
+    chord = i % CHORDS.length;
+    if (!bed) return;
+    const t = ac.currentTime;
+    voices.forEach(([a, b], k) => { const f = H(CHORDS[chord][k]); a.frequency.setTargetAtTime(f, t, 1.1); b.frequency.setTargetAtTime(f, t, 1.1); });
+    bed.gain.cancelScheduledValues(t); bed.gain.setTargetAtTime(0.85, t, 0.35); bed.gain.setTargetAtTime(0.5, t + dur * 0.7, 1.3);
+    filt.frequency.cancelScheduledValues(t); filt.frequency.setTargetAtTime(2300, t, 0.4); filt.frequency.setTargetAtTime(760, t + dur * 0.7, 1.4);
   }
 
   function play(buffer, { gain = 1, rate = 1, pan = 0, wet = 0.15, loop = false, when = 0 } = {}) {
@@ -125,6 +157,13 @@ export function makeAudio() {
     if (!loop) src.onended = () => { p.disconnect(); send.disconnect(); };
     return { src, g };
   }
+
+  // A hidden tab should be silent; bring the sound back when the viewer returns.
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+    if (!ac) return;
+    if (document.hidden && ac.state === 'running') { resumeOnShow = true; ac.suspend().catch(() => {}); }
+    else if (!document.hidden && resumeOnShow) { resumeOnShow = false; ac.resume().catch(() => {}); }
+  });
 
   const api = {
     quiet: false, err: null,
@@ -142,6 +181,7 @@ export function makeAudio() {
       if (evt === 'beat') api.hit('tick', { gain: 0.5 });
       if (evt === 'back') api.hit('tick', { gain: 0.4, pitch: 0.7 });
       if (evt === 'transition') {
+        swell(d.index ?? 0, d.dur);
         // Stretch the whoosh to the transition so sound and picture end together.
         api.hit('whoosh', { gain: 0.8, pitch: Math.min(2, Math.max(0.5, 1.15 / d.dur)) * (d.reverse ? 0.8 : 1), wet: 0.3 });
         if (!d.reverse && d.name === 'shove') api.hit('thud', { gain: 0.7, when: d.dur * 0.82 });

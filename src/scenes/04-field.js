@@ -1,4 +1,6 @@
 // Scene 4 — ordinary three.js meshes inside the same pipeline.
+// Also: arriving through the `push` transition by dollying the camera with s.enter, and framing that
+// adapts to phone screens with fitCamera (wider lens when narrow, lens shift beside the headline).
 // Shows: an InstancedMesh posed from a closed-form function of (cell, time, beat) — no simulation
 // state, so Back and jumping just work — rendered into an MSAA HDR target with a depth buffer,
 // then through the same post pass. Also: text that follows a projected 3D point.
@@ -6,14 +8,15 @@
 import * as THREE from 'three';
 import { createPost } from '../engine/post.js';
 import { ease, mix } from '../engine/math.js';
+import { fitCamera, dolly } from '../engine/camera.js';
 
 const G = 44; // grid is G x G
 
 export default {
   id: 'field',
   title: 'Meshes still work',
-  enterWith: 'shove',
-  beats: [{ dur: 2.4, delay: 0.5, hold: 3 }, { dur: 3, hold: 4 }, { dur: 2, hold: 6 }],
+  enterWith: 'push',
+  beats: [{ dur: 2.4, delay: 0.5, hold: 3, caption: 'And meshes still work: a field of columns.' }, { dur: 3, hold: 4, caption: 'A ring travels outward through the field.' }, { dur: 2, hold: 6, caption: 'Now make your own.' }],
   notes: [
     'Regular three.js: one InstancedMesh, two lights, a perspective camera.',
     'Nothing is simulated. Each column height is a formula of its cell, the time and the beat, so the scene can be scrubbed in either direction.',
@@ -44,7 +47,7 @@ export default {
     let dim = 0;
 
     return {
-      resize() { cam.aspect = gfx.W / gfx.H; cam.updateProjectionMatrix(); },
+      resize() { fitCamera(cam, gfx, { fov: 32, fit: 0.5, shiftY: -0.08 }); },
       update(s) {
         const rise = s.k(0, 0, 2.2, ease.out3) * mix(0.25, 1, ease.out3(s.enter));
         const pulse = s.at(1), wave = s.k(1, 0, 1), calm = s.k(2, 0, 1.6);
@@ -65,8 +68,10 @@ export default {
 
         const a = s.t * 0.06 + 0.7 + s.mouse.x * 0.08, d = mix(46, 38, s.k(1, 0, 3));
         cam.position.set(Math.sin(a) * d, 17 - s.mouse.y * 1.5, Math.cos(a) * d);
-        cam.lookAt(0, 1.5, 0);
-        cam.aspect = gfx.W / gfx.H; cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+        cam.lookAt(0, 1.5, 0); cam.updateMatrixWorld();
+        // Arrive from further back while the push transition runs (less travel with reduced motion).
+        dolly(cam, -(ctx.reduced ? 4 : 14) * (1 - ease.out3(s.enter)));
+        fitCamera(cam, gfx, { fov: 32, fit: 0.5, shiftY: -0.08 });
 
         // Pin a label to the tallest column: project the 3D point, convert clip space → design units.
         v.set(px, peak + 0.6, pz).project(cam);

@@ -117,6 +117,16 @@ Durations are from the reference deck.
 - The tear line becomes the divider in the next scene.
 - **Rule: complementary edges from a single source.**
 
+### push (1.6 s, starter kit)
+*Moving forward: the general-purpose cut that works for any pair of scenes.*
+
+- Both scenes keep moving: the incoming camera arrives from further back (`dolly(cam, -travel · (1 − out3(s.enter)))`), the outgoing one keeps going.
+- A 14-tap radial zoom blur of both images, strength `0.16 · sin(πp)^1.4`, so it peaks at the middle.
+- The mix happens between 12% and 88% of the cut, smoothstepped.
+- Optional warm flash, `flash · exp(−((p − 0.5)/0.13)²)`, set per scene as `push: { flash: .2 }`.
+- With reduced motion: no blur, no flash, a calm dissolve.
+- **Rule: a crossfade reads as travel when the cameras move and the blur peaks mid-cut.** From [13](13-lessons-from-a-12-scene-film.md).
+
 ### fade (0.7 s)
 `mix(A, B, smoothstep(0, 1, p))`. Used for the first scene and for jumps. Not "linked": scenes do not co-animate.
 

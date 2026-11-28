@@ -61,6 +61,8 @@ It gives the deck a hand, makes changes feel caused rather than animated, and ti
 
 **Pick one motif for your deck and let it do the work.**
 
+A different kind of motif, from the twelve-scene film in [13](13-lessons-from-a-12-scene-film.md): a **running instrument**. A scale readout and location label stay on screen for the whole film, from 20 m on a beach to 3 nm inside a transistor, interpolated in log space, with a ruler that slides as the scale changes. When the talk's argument is a quantity (scale, time, money, speed), a gauge that measures it can be the through-line.
+
 ## Pacing
 
 - Two to four beats per scene. More, and the scene should be two scenes.

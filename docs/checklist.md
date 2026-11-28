@@ -48,6 +48,13 @@
 - [ ] Random frames (`npm run motion -- --random 3`) look as good as the settled ones.
 - [ ] No frame looks like a default template or a tech demo (unless that is the joke).
 - [ ] Looks right at 16:10, 4:3 and ultrawide (backgrounds bleed; nothing important leaves the 16:9 frame).
+- [ ] Looks right on a phone held upright (`npm run shoot -- --size 390x844`): 3D scenes use `fitCamera`, headlines are readable.
+
+## Access
+
+- [ ] Every beat has a `caption` for screen readers.
+- [ ] With `?reduced`, camera travel is short and nothing zoom-blurs or flashes.
+- [ ] The on-screen controls work by tap; swipe right goes back.
 - [ ] Text is sharp at the presentation resolution.
 
 ## Performance

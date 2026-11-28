@@ -17,7 +17,7 @@ export default {
   id: 'beats',
   title: 'One click, one beat',
   enterWith: 'shove',
-  beats: [{ dur: 2.2, delay: 0.5, hold: 3 }, { dur: 2.6, hold: 4 }, { dur: 1.2, hold: 3 }],
+  beats: [{ dur: 2.2, delay: 0.5, hold: 3, caption: 'One click, one beat. Six bars grow one after another.' }, { dur: 2.6, hold: 4, caption: 'The bars change from a straight line to doubling: the last is 32 times the first.' }, { dur: 1.2, hold: 3, caption: 'A selection box lands on the tallest bar.' }],
   notes: [
     'Bars grow one after another. That stagger is one line: s.k(0, 0.2 + i * 0.12, …).',
     'Second beat: the same bars re-pose from a straight line to doubling. Scenes are functions of beat progress, so Back simply un-plays this.',

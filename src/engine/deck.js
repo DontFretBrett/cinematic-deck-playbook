@@ -35,6 +35,9 @@ import { clamp01, damp, ease } from './math.js';
 import { COLOR } from './glsl.js';
 
 const MAX_PIXELS = 2560 * 1600; // never shade more than this, whatever the display
+const MAX_PIXELS_PHONE = 1.0e6;  // phones and tablets: a smaller budget, they are hot and slow
+const QUALITY_LEVELS = [1, 0.84, 0.7, 0.58];
+const media = (q) => typeof matchMedia !== 'undefined' && matchMedia(q).matches;
 const nullAudio = () => ({ unlock() {}, mute() {}, emit() {}, hit() {}, update() {}, quiet: false });
 
 export const fade = {
@@ -53,9 +56,13 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
   await type.loadFonts(assets);
   const audio = (makeAudio || nullAudio)();
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+  // Respect the viewer's motion setting. Scenes and transitions read ctx.reduced (and s.reduced):
+  // shorten camera travel, drop motion blur and zoom, keep cuts gentle.
+  const reduced = qs.has('reduced') || media('(prefers-reduced-motion: reduce)');
+  const mobile = media('(pointer: coarse)');
 
   const ctx = {
-    THREE, gfx, view, type, audio, mouse, headless, assets, deck: null,
+    THREE, gfx, view, type, audio, mouse, headless, assets, reduced, mobile, deck: null,
     text: (t, o) => type.block(t, o),
     overlay: () => createOverlay(gfx),
     sfx: (name, opts) => { if (!audio.quiet) audio.hit(name, opts); },
@@ -71,7 +78,7 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
       const n = def.beats.length;
       const s = (this.s = {
         t: 0, dt: 0, beat: 0, n, p: new Array(n).fill(0), since: new Array(n).fill(0),
-        enter: 1, exit: 0, dir: 1, mouse, view, q: 1,
+        enter: 1, exit: 0, dir: 1, mouse, view, q: 1, reduced,
         at: (i) => s.p[i] * def.beats[i].dur,
         k: (i, t0, t1, fn = ease.io3) => fn(clamp01((s.p[i] * def.beats[i].dur - t0) / Math.max(1e-4, t1 - t0))),
         // Edge trigger for one-shot events (sounds, particle bursts): fires once when `cond` becomes
@@ -130,7 +137,7 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
   };
 
   let cur = -1, trans = null, time = 0, auto = false, muted = false, black = 0, blackTarget = 0, queued = false;
-  let quality = qs.get('q') ? +qs.get('q') : 1;
+  let level = 0, quality = qs.get('q') ? +qs.get('q') : QUALITY_LEVELS[0];
   const listeners = {};
   const fire = (evt, data) => (listeners[evt] || []).forEach((fn) => fn(data));
   const thumbs = [];
@@ -172,7 +179,7 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
       if (cur < 0) { cur = index; fire('move'); housekeeping(); return; }
       trans = { from: cur, to: index, T: t, name, p: 0, t: 0, dur: t.def.dur * (reverse ? 0.55 : 1), speed: 1, reverse, linked: name !== 'fade' };
       if (t.inst.start) t.inst.start(trans);
-      audio.emit('transition', { name, from: scenes[cur].id, to: scenes[index].id, dur: trans.dur, reverse });
+      audio.emit('transition', { name, from: scenes[cur].id, to: scenes[index].id, index, dur: trans.dur, reverse });
       fire('move');
     },
 
@@ -191,7 +198,9 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
 
     info() {
       const r = runners[trans ? trans.to : cur];
-      return { scene: r.def.id, index: r.i, count: runners.length, beat: r.s.beat, beats: r.s.n, title: r.def.title, notes: (r.def.notes || [])[r.s.beat] || '' };
+      const b = r.def.beats[r.s.beat] || {};
+      return { scene: r.def.id, index: r.i, count: runners.length, beat: r.s.beat, beats: r.s.n, title: r.def.title, notes: (r.def.notes || [])[r.s.beat] || '',
+        caption: b.caption || '', auto: auto, autoProgress: auto && !trans ? clamp01(r.s.since[r.s.beat] / ((b.delay || 0) + b.dur + (b.hold ?? 3))) : 0 };
     },
 
     /**
@@ -357,7 +366,7 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
     if (qs.get('px')) dpr = +qs.get('px');
     let pw = cw * dpr, ph = ch * dpr;
-    const cap = Math.min(1, Math.sqrt(MAX_PIXELS / (pw * ph))) * quality;
+    const cap = Math.min(1, Math.sqrt((mobile ? MAX_PIXELS_PHONE : MAX_PIXELS) / (pw * ph))) * quality;
     pw = Math.max(2, Math.round(pw * cap)); ph = Math.max(2, Math.round(ph * cap));
     view.resize(pw, ph);
     gfx.resize(pw, ph, view.ppu);
@@ -418,16 +427,27 @@ export async function createDeck({ canvas, scenes, transitions = {}, headless = 
     return src;
   }
 
-  // ── frame loop with a one-way quality governor ───────────────────────────────
-  let last = 0, slow = 0, hidden = false;
+  // ── frame loop with a quality governor ───────────────────────────────────────
+  // Frame time is smoothed (EMA). Slow for 1.2 s → step down a level. Fast for 6 s → try one level up,
+  // but never while a transition runs, and give up on a level after it has failed three times:
+  // oscillating between sharp and soft is worse than staying a little soft.
+  let last = 0, hidden = false, ema = 1 / 60, slowT = 0, fastT = 0, warmup = 0;
+  const failures = QUALITY_LEVELS.map(() => 0);
+  function setLevel(l) { level = l; quality = QUALITY_LEVELS[l]; resize(); fire('quality', quality); }
+  function govern(raw) {
+    warmup += raw;
+    if (qs.get('q') || trans || warmup < 3 || raw > 0.2) return;
+    ema += (raw - ema) * 0.06;
+    if (ema > 1 / 36) { slowT += raw; fastT = 0; if (slowT > 1.2 && level < QUALITY_LEVELS.length - 1) { failures[level]++; setLevel(level + 1); slowT = 0; ema = 1 / 48; } }
+    else if (ema < 1 / 57) { fastT += raw; slowT = 0; if (fastT > 6 && level > 0 && failures[level - 1] < 3) { setLevel(level - 1); fastT = 0; } }
+    else { slowT = 0; fastT = 0; }
+  }
   function loop(now) {
     requestAnimationFrame(loop);
     const raw = (now - last) / 1000; last = now;
     if (hidden) return;
     const dt = Math.min(raw, 0.05); // a stall must not teleport the animation
-    // If we sit below ~40 fps for a while, shade fewer pixels. Never go back up: oscillation is worse than softness.
-    if (!qs.get('q') && raw > 1 / 40 && raw < 0.5) { if (++slow > 45 && quality > 0.5) { quality = Math.max(0.5, quality * 0.8); slow = 0; resize(); } }
-    else slow = Math.max(0, slow - 1);
+    govern(raw);
     try { update(dt); draw(); } catch (e) { if (!loop.err) { loop.err = e; console.error(e); } }
   }
   if (!headless) {
